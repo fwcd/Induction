@@ -15,6 +15,10 @@ class Button {
         pos = new Vector(x, y);
     }
     
+    void setForeground(color foreground) {
+        this.foreground = foreground;
+    }
+    
     void setBackground(color background) {
         this.background = background;
     }
@@ -51,22 +55,31 @@ class Switcher {
         actions.put(label, onClick);
     }
     
+    void select(String label) {
+        selected = label;
+        actions.get(selected).run();
+    }
+    
     void paint() {
         int x = pos.getX();
         int y = pos.getY();
         
         for (final String label : actions.keySet()) {
-            final Runnable action = actions.get(label);
             Button button = new Button(label, new Runnable() {
                 @Override
                 public void run() {
-                    selected = label;
-                    action.run();
+                    select(label);
                 }
             }, x, y);
-            if (selected != null && selected == label) {
+            
+            if (selected == null) {
+                select(label);
+            }
+            if (selected == label) {
+                button.setForeground(#FFFFFF);
                 button.setBackground(#555555);
             }
+            
             button.paint();
             x += button.getFrame().getWidth();
         }

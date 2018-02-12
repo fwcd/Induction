@@ -2,41 +2,22 @@ import java.util.concurrent.ThreadLocalRandom;
 
 // Class declarations
 
-class HomogeneousVectorField {
-    final Rectangle bounds;
-    Vector value;
+interface ConductorSupplier {
+    Conductor newConductor(int x, int y, int velocityX, int velocityY);
+}
+
+interface Conductor {
+    Vector getPos();
     
-    HomogeneousVectorField(int x, int y, int w, int h, Vector value) {
-        bounds = new Rectangle(x, y, w, h);
-        this.value = value;
-    }
+    Vector getVelocity();
     
-    void normScaleValue(float newLength) {
-        value = value.normScale(newLength);
-    }
+    String getDescription();
     
-    Vector getValue(Vector pos) {
-        if (bounds.contains(pos)) {
-            return value;
-        } else {
-            return new Vector(0, 0);
-        }
-    }
+    void updateVoltage(Vector magneticFluxDensity, float length);
     
-    void paint() {
-        Vector topLeft = bounds.getTopLeft();
-        Vector bottomRight = bounds.getBottomRight();
-        int yStep = max(value.getY(), 10);
-        int xStep = 15;
-        
-        stroke(160);
-        
-        for (int y=topLeft.getY(); y<bottomRight.getY(); y+=yStep) {
-            for (int x=topLeft.getX(); x<bottomRight.getX(); x+=xStep) {
-                value.paint(x, y);
-            }
-        }
-    }
+    float getVoltage();
+    
+    void paint();
 }
 
 class Magnet {
@@ -71,7 +52,7 @@ class Magnet {
     }
 }
 
-class Cable {
+class Cable implements Conductor {
     final int symbolRadius = 20;
     Vector pos;
     Vector velocity;
@@ -82,16 +63,26 @@ class Cable {
         velocity = new Vector(vX, vY);
     }
     
+    @Override
     Vector getPos() { return pos; }
     
+    @Override
     Vector getVelocity() { return velocity; }
     
-    void update(float cableLength, Vector magneticFlux) {
+    @Override
+    void updateVoltage(Vector magneticFlux, float cableLength) {
         voltage = cableLength * velocity.cross(magneticFlux);
     }
     
+    @Override
     float getVoltage() {
         return voltage;
+    }
+    
+    @Override
+    String getDescription() {
+        return "A straight cable that\n"
+                + "points into the screen.";
     }
     
     void paint() {
@@ -117,24 +108,30 @@ class Cable {
 
 final Slider cableLengthSlider = new Slider(10, 10, 1, 50);
 final Slider magneticFluxSlider = new Slider(10, 25, 1, 50);
-final Switcher itemSwitcher = new Switcher(100, 10);
+final Switcher itemSwitcher = new Switcher(500, 10);
 Magnet magnet;
 FunctionPlot voltagePlot;
-Cable cable = null;
+ConductorSupplier condSupplier;
+Conductor conductor = null;
 boolean showHint = true;
 
 // Method declarations
 
 void setup() {
     size(640, 480);
-    itemSwitcher.addAction("Cable", new Runnable() {
-        @Override
-        public void run() {
-            println("Test");
-        }
-    });
     magnet = new Magnet(20, 50, 400, 200);
     voltagePlot = new FunctionPlot("U", "t", 20, 260, 400, 180);
+    
+    itemSwitcher.addAction("Cable", new Runnable() { @Override public void run() {
+        condSupplier = new ConductorSupplier() { @Override public Conductor newConductor(int x, int y, int vX, int vY) {
+            return new Cable(x, y, vX, vY);
+        }};
+    }});
+    itemSwitcher.addAction("Loop", new Runnable() { @Override public void run() {
+        condSupplier = new ConductorSupplier() { @Override public Conductor newConductor(int x, int y, int vX, int vY) {
+            return null; // TODO
+        }};
+    }});
 }
 
 void draw() {
@@ -151,22 +148,22 @@ void draw() {
         if (mouseButton == RIGHT) {
             Vector velocity = new Vector(0, 0);
             
-            if (cable != null) {
-                velocity = cable.getPos().sub(new Vector(mouseX, mouseY));
+            if (conductor != null) {
+                velocity = conductor.getPos().sub(new Vector(mouseX, mouseY));
                 
                 if (velocity.isZero()) {
-                    velocity = cable.getVelocity();
+                    velocity = conductor.getVelocity();
                 }
             }
             
-            cable = new Cable(mouseX, mouseY, velocity.getX(), velocity.getY());
+            conductor = condSupplier.newConductor(mouseX, mouseY, velocity.getX(), velocity.getY());
         }
     }
     
-    if (cable != null) {
-        cable.update(cableLengthSlider.getValue(), magnet.getMagneticFluxDensity(cable.getPos()));
-        voltagePlot.addDataPoint((int) cable.getVoltage());
-        cable.paint();
+    if (conductor != null) {
+        conductor.updateVoltage(magnet.getMagneticFluxDensity(conductor.getPos()), cableLengthSlider.getValue());
+        voltagePlot.addDataPoint((int) conductor.getVoltage());
+        conductor.paint();
     }
     
     cableLengthSlider.paint(" m (Cable length)");

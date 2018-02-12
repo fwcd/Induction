@@ -58,6 +58,43 @@ class Vector {
     }
 }
 
+class HomogeneousVectorField {
+    final Rectangle bounds;
+    Vector value;
+    
+    HomogeneousVectorField(int x, int y, int w, int h, Vector value) {
+        bounds = new Rectangle(x, y, w, h);
+        this.value = value;
+    }
+    
+    void normScaleValue(float newLength) {
+        value = value.normScale(newLength);
+    }
+    
+    Vector getValue(Vector pos) {
+        if (bounds.contains(pos)) {
+            return value;
+        } else {
+            return new Vector(0, 0);
+        }
+    }
+    
+    void paint() {
+        Vector topLeft = bounds.getTopLeft();
+        Vector bottomRight = bounds.getBottomRight();
+        int yStep = max(value.getY(), 10);
+        int xStep = 15;
+        
+        stroke(160);
+        
+        for (int y=topLeft.getY(); y<bottomRight.getY(); y+=yStep) {
+            for (int x=topLeft.getX(); x<bottomRight.getX(); x+=xStep) {
+                value.paint(x, y);
+            }
+        }
+    }
+}
+
 class Rectangle {
     final int x;
     final int y;
