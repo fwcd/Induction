@@ -1,73 +1,13 @@
 import java.util.concurrent.ThreadLocalRandom;
 
-class Vector {
-    final int x;
-    final int y;
-
-    Vector(int x, int y) {
-        this.x = x;
-        this.y = y;
-    }
-    
-    int getX() { return x; }
-    
-    int getY() { return y; }
-    
-    boolean isZero() { return x == 0 && y == 0; }
-    
-    double length() {
-        return sqrt((x * x) + (y * y));
-    }
-    
-    Vector add(Vector other) {
-        return new Vector(x + other.x, y - other.y);
-    }
-    
-    Vector sub(Vector other) {
-        return new Vector(x - other.x, y - other.y);
-    }
-    
-    Vector scale(double factor) {
-        return new Vector((int) (x * factor), (int) (y * factor));
-    }
-    
-    float cross(Vector other) {
-        return (x * other.y) - (y * other.x);
-    }
-    
-    Vector normScale(double l) {
-        double length = length();
-        return new Vector((int) ((x / length) * l), (int) ((y / length) * l));
-    }
-
-    void paint(int sX, int sY) {
-        int eX = sX + x;
-        int eY = sY + y;
-        float theta = atan2(y, x);
-        line(sX, sY, eX, eY);
-        translate(eX, eY);
-        rotate(-(PI / 2) + theta);
-        line(-5, -5, 0, 0);
-        rotate(PI / 2);
-        line(-5, -5, 0, 0);
-        rotate(-theta);
-        translate(-eX, -eY);
-    }
-    
-    @Override
-    String toString() {
-        return "(" + Integer.toString(x) + ", " + Integer.toString(y) + ")";
-    }
-}
+// Class declarations
 
 class HomogeneousVectorField {
-    final Vector topLeft;
-    final Vector bottomRight;
+    final Rectangle bounds;
     Vector value;
     
-    HomogeneousVectorField(int tlX, int tlY, int brX, int brY, Vector value) {
-        topLeft = new Vector(tlX, tlY);
-        bottomRight = new Vector(brX, brY);
+    HomogeneousVectorField(int x, int y, int w, int h, Vector value) {
+        bounds = new Rectangle(x, y, w, h);
         this.value = value;
     }
     
@@ -101,38 +41,33 @@ class HomogeneousVectorField {
 }
 
 class Magnet {
-    final int x;
-    final int y;
-    final int w;
-    final int h;
+    final Rectangle frame;
     final int s = 20;
     final HomogeneousVectorField bField;
     
     Magnet(int x, int y, int w, int h) {
-        this.x = x;
-        this.y = y;
-        this.w = w;
-        this.h = h;
-        bField = new HomogeneousVectorField(x + s, y + s, x + w, y + h - s, new Vector(0, 10));
+        frame = new Rectangle(x, y, w, h);
+        bField = new HomogeneousVectorField(x + s, y + s, w, h - s, new Vector(0, 10));
     }
     
-    Vector getMagneticFlux(Vector pos) {
+    Vector getMagneticFluxDensity(Vector pos) {
         return bField.getValue(pos.getX(), pos.getY());
     }
 
-    void updateStrength(float magneticFlux) {
-        bField.normScaleValue(magneticFlux);
+    void updateStrength(float absMagneticFluxDensity) {
+        bField.normScaleValue(absMagneticFluxDensity);
     }
 
     void paint() {
-        int segHeight = (h - (2 * s)) / 2;
+        int segHeight = (frame.getHeight() - (2 * s)) / 2;
+        
         noStroke();
         fill(255, 0, 0);
-        rect(x, y, w, s);
-        rect(x, y + s, s, segHeight);
+        rect(frame.getX(), frame.getY(), frame.getWidth(), s);
+        rect(frame.getX(), frame.getY() + s, s, segHeight);
         fill(0, 255, 0);
-        rect(x, y + s + segHeight, s, segHeight);
-        rect(x, y + s + (segHeight * 2), w, s);
+        rect(frame.getX(), frame.getY() + s + segHeight, s, segHeight);
+        rect(frame.getX(), frame.getY() + s + (segHeight * 2), frame.getWidth(), s);
         bField.paint();
     }
 }
@@ -179,12 +114,16 @@ class Cable {
     }
 }
 
-final Slider cableLengthSlider = new Slider(10, 10, 0, 100);
-final Slider magneticFluxSlider = new Slider(10, 25, 1, 100);
+// Field declarations
+
+final Slider cableLengthSlider = new Slider(10, 10, 1, 50);
+final Slider magneticFluxSlider = new Slider(10, 25, 1, 50);
 Magnet magnet;
 FunctionPlot voltagePlot;
 Cable cable = null;
 boolean showHint = true;
+
+// Method declarations
 
 void setup() {
     size(640, 480);
@@ -219,13 +158,13 @@ void draw() {
     }
     
     if (cable != null) {
-        cable.update(cableLengthSlider.getValue(), magnet.getMagneticFlux(cable.getPos()));
+        cable.update(cableLengthSlider.getValue(), magnet.getMagneticFluxDensity(cable.getPos()));
         voltagePlot.addDataPoint((int) cable.getVoltage());
         cable.paint();
     }
     
     cableLengthSlider.paint(" m (Cable length)");
-    magneticFluxSlider.paint(" B (Magnetic flux)");
+    magneticFluxSlider.paint(" T (Magnetic flux density)");
     
     if (showHint) {
         textSize(15);

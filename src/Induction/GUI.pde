@@ -1,4 +1,16 @@
 import java.util.List;
+import java.util.Map;
+
+
+
+class Switcher {
+    
+    Map<String, Runnable> actions = new HashMap<String, Runnable>();
+    
+    void addAction(String label, Runnable onClick) {
+        actions.put(label, onClick);
+    }
+}
 
 class FunctionPlot {
     final List<Integer> data = new ArrayList<Integer>();
