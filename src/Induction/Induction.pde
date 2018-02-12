@@ -11,17 +11,12 @@ class HomogeneousVectorField {
         this.value = value;
     }
     
-    boolean contains(int x, int y) {
-        return x > topLeft.getX() && x < bottomRight.getX()
-                && y > topLeft.getY() && y < bottomRight.getY();
-    }
-    
     void normScaleValue(float newLength) {
         value = value.normScale(newLength);
     }
     
-    Vector getValue(int x, int y) {
-        if (contains(x, y)) {
+    Vector getValue(Vector pos) {
+        if (bounds.contains(pos)) {
             return value;
         } else {
             return new Vector(0, 0);
@@ -29,9 +24,13 @@ class HomogeneousVectorField {
     }
     
     void paint() {
-        stroke(160);
+        Vector topLeft = bounds.getTopLeft();
+        Vector bottomRight = bounds.getBottomRight();
         int yStep = max(value.getY(), 10);
         int xStep = 15;
+        
+        stroke(160);
+        
         for (int y=topLeft.getY(); y<bottomRight.getY(); y+=yStep) {
             for (int x=topLeft.getX(); x<bottomRight.getX(); x+=xStep) {
                 value.paint(x, y);
@@ -47,11 +46,11 @@ class Magnet {
     
     Magnet(int x, int y, int w, int h) {
         frame = new Rectangle(x, y, w, h);
-        bField = new HomogeneousVectorField(x + s, y + s, w, h - s, new Vector(0, 10));
+        bField = new HomogeneousVectorField(x + s, y + s, w - s, h - (2 * s), new Vector(0, 10));
     }
     
     Vector getMagneticFluxDensity(Vector pos) {
-        return bField.getValue(pos.getX(), pos.getY());
+        return bField.getValue(pos);
     }
 
     void updateStrength(float absMagneticFluxDensity) {
@@ -118,6 +117,7 @@ class Cable {
 
 final Slider cableLengthSlider = new Slider(10, 10, 1, 50);
 final Slider magneticFluxSlider = new Slider(10, 25, 1, 50);
+final Switcher itemSwitcher = new Switcher(100, 10);
 Magnet magnet;
 FunctionPlot voltagePlot;
 Cable cable = null;
@@ -127,6 +127,12 @@ boolean showHint = true;
 
 void setup() {
     size(640, 480);
+    itemSwitcher.addAction("Cable", new Runnable() {
+        @Override
+        public void run() {
+            println("Test");
+        }
+    });
     magnet = new Magnet(20, 50, 400, 200);
     voltagePlot = new FunctionPlot("U", "t", 20, 260, 400, 180);
 }
@@ -165,6 +171,7 @@ void draw() {
     
     cableLengthSlider.paint(" m (Cable length)");
     magneticFluxSlider.paint(" T (Magnetic flux density)");
+    itemSwitcher.paint();
     
     if (showHint) {
         textSize(15);

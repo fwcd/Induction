@@ -91,6 +91,10 @@ class Rectangle {
                 && pos.getY() > y && pos.getY() < (y + h);
     }
     
+    void paint() {
+        rect(x, y, w, h);
+    }
+    
     int getX() { return x; }
     
     int getY() { return y; }

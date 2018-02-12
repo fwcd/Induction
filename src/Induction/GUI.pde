@@ -1,33 +1,88 @@
 import java.util.List;
 import java.util.Map;
 
-
+class Button {
+    final String label;
+    final Vector pos;
+    final Runnable action;
+    color background = #DDDDDD;
+    color foreground = #000000;
+    Rectangle frame;
+    
+    Button(String label, Runnable action, int x, int y) {
+        this.label = label;
+        this.action = action;
+        pos = new Vector(x, y);
+    }
+    
+    void setBackground(color background) {
+        this.background = background;
+    }
+    
+    void updateFrame() {
+        frame = new Rectangle(pos.getX(), pos.getY(), (int) (textWidth(label) * 1.5F), (int) (textAscent() * 1.5F));
+    }
+    
+    Rectangle getFrame() { return frame; }
+    
+    void paint() {
+        textSize(14);
+        updateFrame();
+        fill(background);
+        frame.paint();
+        fill(foreground);
+        text(label, frame.getX() + (frame.getWidth() * 0.1), frame.getY() + (frame.getHeight() * 0.8));
+        if (mousePressed && mouseButton == LEFT && frame.contains(new Vector(mouseX, mouseY))) {
+            action.run();
+        }
+    }
+}
 
 class Switcher {
+    final Vector pos;
+    final Map<String, Runnable> actions = new HashMap<String, Runnable>();
+    String selected = null;
     
-    Map<String, Runnable> actions = new HashMap<String, Runnable>();
+    Switcher(int x, int y) {
+        pos = new Vector(x, y);
+    }
     
     void addAction(String label, Runnable onClick) {
         actions.put(label, onClick);
+    }
+    
+    void paint() {
+        int x = pos.getX();
+        int y = pos.getY();
+        
+        for (final String label : actions.keySet()) {
+            final Runnable action = actions.get(label);
+            Button button = new Button(label, new Runnable() {
+                @Override
+                public void run() {
+                    selected = label;
+                    action.run();
+                }
+            }, x, y);
+            if (selected != null && selected == label) {
+                button.setBackground(#555555);
+            }
+            button.paint();
+            x += button.getFrame().getWidth();
+        }
     }
 }
 
 class FunctionPlot {
     final List<Integer> data = new ArrayList<Integer>();
-    final int x;
-    final int y;
-    final int w;
-    final int h;
+    final Rectangle bounds;
     final String yAxisLabel;
     final String xAxisLabel;
     
     FunctionPlot(String yAxisLabel, String xAxisLabel, int x, int y, int w, int h) {
         this.xAxisLabel = xAxisLabel;
         this.yAxisLabel = yAxisLabel;
-        this.x = x;
-        this.y = y;
-        this.w = w;
-        this.h = h;
+        bounds = new Rectangle(x, y, w, h);
     }
     
     int[] generateScaledData() {
@@ -41,14 +96,14 @@ class FunctionPlot {
         }
         for (int i=0; i<scaledData.length; i++) {
             float scale = max - min;
-            scaledData[i] = scale == 0 ? 0 : (int) (((data.get(i) - min) / scale) * (float) h);
+            scaledData[i] = scale == 0 ? 0 : (int) (((data.get(i) - min) / scale) * (float) bounds.getHeight());
         }
         
         return scaledData;
     }
     
     void addDataPoint(int v) {
-        if (data.size() >= w) {
+        if (data.size() >= bounds.getWidth()) {
             data.remove(0);
         }
         
@@ -56,6 +111,10 @@ class FunctionPlot {
     }
     
     void paint() {
+        int x = bounds.getX();
+        int y = bounds.getY();
+        int w = bounds.getWidth();
+        int h = bounds.getHeight();
         int labelSize = 18;
         
         stroke(0);
