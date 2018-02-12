@@ -2,24 +2,6 @@ import java.util.concurrent.ThreadLocalRandom;
 
 // Class declarations
 
-interface ConductorSupplier {
-    Conductor newConductor(int x, int y, int velocityX, int velocityY);
-}
-
-interface Conductor {
-    Vector getPos();
-    
-    Vector getVelocity();
-    
-    String getDescription();
-    
-    void updateVoltage(Vector magneticFluxDensity, float length);
-    
-    float getVoltage();
-    
-    void paint();
-}
-
 class Magnet {
     final Rectangle frame;
     final int s = 20;
@@ -52,70 +34,28 @@ class Magnet {
     }
 }
 
-class Cable implements Conductor {
-    final int symbolRadius = 20;
-    Vector pos;
-    Vector velocity;
-    float voltage;
-    
-    Cable(int x, int y, int vX, int vY) {
-        pos = new Vector(x, y);
-        velocity = new Vector(vX, vY);
-    }
-    
-    @Override
-    Vector getPos() { return pos; }
-    
-    @Override
-    Vector getVelocity() { return velocity; }
-    
-    @Override
-    void updateVoltage(Vector magneticFlux, float cableLength) {
-        voltage = cableLength * velocity.cross(magneticFlux);
-    }
-    
-    @Override
-    float getVoltage() {
-        return voltage;
-    }
-    
-    @Override
-    String getDescription() {
-        return "A straight cable that\n"
-                + "points into the screen.";
-    }
-    
-    void paint() {
-        int r = symbolRadius;
-        int d = r * 2;
-        int l = (int) (r * sin(PI / 4));
-        
-        fill(0);
-        textSize(16);
-        text("v = " + velocity.toString() + " m/s", pos.getX(), pos.getY() - d);
-        text("U = " + Float.toString(voltage) + " V", pos.getX(), pos.getY() - r);
-        stroke(0);
-        noFill();
-        ellipse(pos.getX(), pos.getY(), r, r);
-        line(pos.getX() - r + l, pos.getY() - r + l, pos.getX() + r - l, pos.getY() + r - l);
-        line(pos.getX() + r - l, pos.getY() - r + l, pos.getX() - r + l, pos.getY() + r - l);
-        
-        velocity = velocity.scale(0.5);
-    }
-}
-
 // Field declarations
 
 final Slider cableLengthSlider = new Slider(10, 10, 1, 50);
 final Slider magneticFluxSlider = new Slider(10, 25, 1, 50);
-final Switcher itemSwitcher = new Switcher(500, 10);
+final Switcher itemSwitcher = new Switcher(450, 10);
 Magnet magnet;
 FunctionPlot voltagePlot;
 ConductorSupplier condSupplier;
-Conductor conductor = null;
+Conductor conductor;
 boolean showHint = true;
 
 // Method declarations
+
+void createConductor() {
+    if (conductor == null) {
+        conductor = condSupplier.newConductor(-100, -100, 0, 0);
+    } else {
+        Vector pos = conductor.getPos();
+        Vector v = conductor.getVelocity();
+        conductor = condSupplier.newConductor(pos.getX(), pos.getY(), v.getX(), v.getY());
+    }
+}
 
 void setup() {
     size(640, 480);
@@ -126,12 +66,15 @@ void setup() {
         condSupplier = new ConductorSupplier() { @Override public Conductor newConductor(int x, int y, int vX, int vY) {
             return new Cable(x, y, vX, vY);
         }};
+        createConductor();
     }});
-    itemSwitcher.addAction("Loop", new Runnable() { @Override public void run() {
+    // TODO:
+    /*itemSwitcher.addAction("Loop", new Runnable() { @Override public void run() {
         condSupplier = new ConductorSupplier() { @Override public Conductor newConductor(int x, int y, int vX, int vY) {
-            return null; // TODO
+            return new ConductorLoop(x, y, vX, vY);
         }};
-    }});
+        createConductor();
+    }});*/
 }
 
 void draw() {
@@ -164,9 +107,13 @@ void draw() {
         conductor.updateVoltage(magnet.getMagneticFluxDensity(conductor.getPos()), cableLengthSlider.getValue());
         voltagePlot.addDataPoint((int) conductor.getVoltage());
         conductor.paint();
+    
+        fill(0);
+        textSize(12);
+        text(conductor.getDescription(), itemSwitcher.getPos().getX(), itemSwitcher.getPos().getY() + 40);
     }
     
-    cableLengthSlider.paint(" m (Cable length)");
+    cableLengthSlider.paint(" m (Conductor length)");
     magneticFluxSlider.paint(" T (Magnetic flux density)");
     itemSwitcher.paint();
     

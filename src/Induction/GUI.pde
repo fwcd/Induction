@@ -60,6 +60,8 @@ class Switcher {
         actions.get(selected).run();
     }
     
+    Vector getPos() { return pos; }
+    
     void paint() {
         int x = pos.getX();
         int y = pos.getY();
